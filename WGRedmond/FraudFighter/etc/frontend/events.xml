@@ -1,0 +1,37 @@
+<?xml version="1.0"?>
+
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="urn:magento:framework:Event/etc/events.xsd">
+
+	<event name="customer_register_success">
+        <observer name="wgredmond_fraudfighter_create_account" instance="WGRedmond\FraudFighter\Observer\Events\CreateAccountEvent" />
+    </event>
+
+	<!--
+	<event name="customer_account_edited">
+        <observer name="wgredmond_fraudfighter_update_account" instance="WGRedmond\FraudFighter\Observer\Events\UpdateAccountEvent" />
+    </event>
+	-->
+<event name="sales_order_place_after">
+<observer name="wgredmond_fraudfighter_place_order_after" instance="WGRedmond\FraudFighter\Observer\Events\OrderPlaceAfter" />
+</event>
+	<event name="customer_save_after_data_object">
+        <observer name="wgredmond_fraudfighter_update_account" instance="WGRedmond\FraudFighter\Observer\Events\UpdateAccountEvent" />
+    </event>
+	
+	<event name="customer_address_save_after">
+        <observer name="wgredmond_fraudfighter_update_accountaddress" instance="WGRedmond\FraudFighter\Observer\Events\UpdateAccountAddress" />
+    </event>
+
+	<event name="sales_order_place_before">
+        <observer name="wgredmond_fraudfighter_create_order" instance="WGRedmond\FraudFighter\Observer\Events\CreateOrderEvent" />
+    </event>
+
+    <event name="customer_login">
+        <observer name="wgredmond_fraudfighter_account_login" instance="WGRedmond\FraudFighter\Observer\Events\AccountLoginEvent" />
+    </event>
+
+    <event name="customer_logout">
+        <observer name="wgredmond_fraudfighter_account_logout" instance="WGRedmond\FraudFighter\Observer\Events\AccountLogoutEvent" />
+    </event>
+
+</config>
