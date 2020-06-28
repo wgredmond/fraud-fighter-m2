@@ -1,5 +1,4 @@
 <?php
-
 namespace WGRedmond\FraudFighter\Logger;
 
 use Monolog\Logger;

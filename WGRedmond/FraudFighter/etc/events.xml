@@ -1,0 +1,13 @@
+<config xsi:noNamespaceSchemaLocation="../../../../../../lib/internal/Magento/Framework/Event/etc/events.xsd">
+
+    <event name="sales_order_place_before">
+        <observer name="wgredmond_fraudfighter_create_order"
+                  instance="WGRedmond\FraudFighter\Observer\Events\CreateOrderEvent"/>
+    </event>
+
+    <event name="sales_order_payment_place_end">
+        <observer name="wgredmond_fraudfighter_test_payment_place_end"
+                  instance="WGRedmond\FraudFighter\Observer\Events\TransactionEvent"/>
+    </event>
+
+</config>

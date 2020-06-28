@@ -1,11 +1,11 @@
 <?php
 /**
- * William G Redmond Inc.
+ * William G Redmond, Inc.
 
  *
  * @category    WGRedmond
  * @package     WGRedmond
- * @copyright   Copyright (c) William G Redmond, Inc.. All rights reserved. (https://wgredmond.com/)
+ * @copyright   Copyright (c) William G Redmond, Inc. All rights reserved. (https://wgredmond.com/)
  */
 
 namespace WGRedmond\FraudFighter\Observer\Events;
@@ -16,12 +16,11 @@ use Psr\Log\LoggerInterface;
 use \WGRedmond\FraudFighter\Helper\Data;
 use \WGRedmond\FraudFighter\Helper\FraudFighterConstants;
 
-class CreateAccountEvent implements ObserverInterface
+use \WGRedmond\FraudFighter\Interfaces\EventsInterface;
+
+class CreateAccountEvent implements ObserverInterface, EventsInterface
 {
-    /**
-     * @var TransportBuilder
-     */
-    protected $transportBuilder;
+
 
     /**
      * @var StoreManagerInterface
@@ -76,103 +75,111 @@ class CreateAccountEvent implements ObserverInterface
      */
     public function execute(\Magento\Framework\Event\Observer $observer)
     {
-        $this->logger->info('In CreateAccountEvent');
+        $this->logger->info('>>>> In CreateAccountEvent <<<<<');
 
 		$helper= $this->dataHelper;
 		$constants= $this->constantsHelper;
         $event = $constants::CREATE_ACCOUNT_EVENT_NAME;
-		
-		$objectManager = \Magento\Framework\App\ObjectManager::getInstance();
-	  
-	    $customer = $observer->getEvent()->getCustomer();
-		//Customer main info
-		$customer_id = $customer->getId();
-		$customer_email=$customer->getEmail();
-		$first_name= $customer->getFirstname();
-		$last_name= $customer->getLastname();
-		$customer_name = $first_name." ".$last_name;
-		$session = $this->customerSession->getMyValue();
-		$referrer_user_id = $customer_id."Test";
-		$customer_agent = $_SERVER ['HTTP_USER_AGENT'];
-		
-		//Billing Address variables
-		
-		$billingID = $customer->getDefaultBilling();
-		$billingAddress = $objectManager->create('Magento\Customer\Model\Address')->load($billingID);
-		$billingCompany = $billingAddress->getCompany();
-		$billingTelephone = $billingAddress->getTelephone();
-		$billingZipcode = $billingAddress->getPostcode();
-		$billingCity = $billingAddress->getCity();
-		$billingRegion = $billingAddress->getRegion();
-		$billingStreet = $billingAddress->getStreet();
-		$billingAddress1 = $billingStreet[0];
-		$billingAddress2 = "";
-		if(isset($billingStreet[1])){
-			$billingAddress2 = $billingStreet[1];
-		}	
-		
-		//Shipping Address variables
-		$shippingId = $customer->getDefaultShipping();
-		$shippingAddress = $objectManager->create('Magento\Customer\Model\Address')->load($shippingId);
-		$shippingCompany = $shippingAddress->getCompany();
-		$shippingTelephone = $shippingAddress->getTelephone();
-		$shippingZipcode = $shippingAddress->getPostcode();
-		$shippingCity = $shippingAddress->getCity();
-		$shippingRegion = $shippingAddress->getRegion();
-		$shippingStreet = $shippingAddress->getStreet();
-		$shippingAddress1 = $shippingStreet[0];
-		$shippingAddress2 = "";
-		if(isset($shippingStreet[1])){
-			$shippingAddress2 = $shippingStreet[1];
-		}
-	
+
+        $customer = $observer->getEvent()->getCustomer();
+
+        // basic properties
+        $properties = $this->addBasicProperties($customer);
+
+        // custom properties
+        $customProperties = $this->addCustomProperties($customer);
+        //$properties = array_merge($properties, $customProperties);
+
+        // add options
+        $options = $this->addOptions();
+
+        // TODO: add loggings
+    }
+
+
+    public function addBasicProperties($customer){
+        $helper= $this->dataHelper;
+        $objectManager = \Magento\Framework\App\ObjectManager::getInstance();
+        //Customer main info
+        $customer_id = $customer->getId();
+        $customer_email=$customer->getEmail();
+        $first_name= $customer->getFirstname();
+        $last_name= $customer->getLastname();
+        $customer_name = $first_name." ".$last_name;
+        $session = $this->customerSession->getMyValue();
+        $referrer_user_id = $customer_id;
+        $customer_agent = $_SERVER ['HTTP_USER_AGENT'];
+
+        //Billing Address variables
+
+        $billingID = $customer->getDefaultBilling();
+        $billingAddress = $objectManager->create('Magento\Customer\Model\Address')->load($billingID);
+        $billingTelephone = $billingAddress->getTelephone();
+        $helper->setBillingAddress($customer,$billingAddress);
+
+        //Shipping Address variables
+
+        $shippingId = $customer->getDefaultShipping();
+        $shippingAddress = $objectManager->create('Magento\Customer\Model\Address')->load($shippingId);
+        $helper->setShippingAddress($customer,$shippingAddress);
+
+
         // If customer data is empty then doesn't need to process
         if (!$customer) {
             return $this;
         }
 
 
-		// Sample $create_account event
-		$properties = array(
-		  // Required Fields
-		  '$user_id'    => $customer_id,
-		  '$ip' => $helper->getRemoteIp(),
+        // Sample $create_account event
+        $properties = array(
+            // Required Fields
+            '$user_id'    => $customer_id,
+            '$ip' => $helper->getRemoteIp(),
 
-		  // Supported Fields
-			'$session_id'       => $session,
-		  '$user_email'       => $customer_email,
-		  '$name'             => $customer_email,
-		  '$phone'            => $billingTelephone,
-		  '$referrer_user_id' => $referrer_user_id,
-		 
-		  '$billing_address'  => array(
-			  '$name'         => $customer_name,
-			  '$phone'        => $billingTelephone,
-			  '$address_1'    => $billingAddress1,
-			  '$address_2'    => $billingAddress2,
-			  '$city'         => $billingCity,
-			  '$region'       => $billingRegion,
-			  '$country'      => 'US',
-			  '$zipcode'      => $billingZipcode
-		  ),
-		  '$shipping_address' => array(
-			  '$name'         => $customer_name,
-			  '$phone'        => $shippingTelephone,
-			  '$address_1'    => $shippingAddress1,
-			  '$address_2'    => $shippingAddress2,
-			  '$city'         => $shippingCity,
-			  '$region'       => $shippingRegion,
-			  '$country'      => 'US',
-			  '$zipcode'      => $shippingZipcode
-		  ),
-		  
-		   '$browser'    => array(
-			'$user_agent' =>  $customer_agent
-		  ) 
-		);
+            // Supported Fields
+            '$session_id'       => $session,
+            '$user_email'       => $customer_email,
+            '$name'             => $customer_name,
+            '$phone'            => $billingTelephone,
+            '$referrer_user_id' => $referrer_user_id,
 
-        // TODO: add detail
-        $this->logger->info('In CreateAccountEvent; TODO');
+            '$billing_address'  =>  $helper->getBillingAddress(),
+
+            '$shipping_address' => $helper->getShippingAddress(),
+
+            '$browser'    => array(
+                '$user_agent' =>  $customer_agent
+            )
+        );
+
+        return $properties;
+
     }
-	
+
+    public function addCustomProperties($customer)
+    {
+        // Override to add custom properties
+        $customProperties = array();
+
+        // example
+        //$customProperties = array(
+        //  '$session_id'       => 'session-1234-5678',
+        //  '$user_email'       => 'BOBBY@EXAMPLE.COM'
+        //);
+
+        return $customProperties;
+    }
+
+
+    public function addOptions()
+    {
+        // Override to add options
+        $options = array(
+            'return_workflow_status' => True,
+            'abuse_types' =>  array('payment_abuse')
+        );
+
+        return $options;
+    }
+
 }

@@ -1,11 +1,11 @@
 <?php
 /**
- * William G Redmond Inc.
+ * William G Redmond, Inc.
 
  *
  * @category    WGRedmond
  * @package     WGRedmond
- * @copyright   Copyright (c) William G Redmond, Inc.. All rights reserved. (https://wgredmond.com/)
+ * @copyright   Copyright (c) William G Redmond, Inc. All rights reserved. (https://wgredmond.com/)
  */
 
 namespace WGRedmond\FraudFighter\Observer\Events;
@@ -15,6 +15,7 @@ use Magento\Store\Model\StoreManagerInterface;
 use Psr\Log\LoggerInterface;
 use \WGRedmond\FraudFighter\Helper\Data;
 use \WGRedmond\FraudFighter\Helper\FraudFighterConstants;
+use  \Magento\Framework\App\RequestInterface;
 class UpdateAccountEvent implements ObserverInterface
 {
    
@@ -29,6 +30,9 @@ class UpdateAccountEvent implements ObserverInterface
      */
     protected $logger;
 	
+	protected $customerFactory;
+	protected $addressFactory;
+	
 	protected $customerSession;
 	
 	/**
@@ -41,12 +45,15 @@ class UpdateAccountEvent implements ObserverInterface
      */
     protected $constantsHelper;
 
+    protected $_request;
+
     public function __construct(
         StoreManagerInterface $storeManager,
         LoggerInterface $logger,
 		\Magento\Customer\Model\Session $customerSession,
 		Data $dataHelper,
-		FraudFighterConstants $constantsHelper
+		FraudFighterConstants $constantsHelper,
+        RequestInterface $request
     ) {
    
         $this->storeManager = $storeManager;
@@ -54,7 +61,7 @@ class UpdateAccountEvent implements ObserverInterface
 		$this->customerSession = $customerSession;
 		$this->dataHelper = $dataHelper;
 		$this->constantsHelper = $constantsHelper;
-		
+		$this->_request = $request;
     }
 
     /**
@@ -63,58 +70,64 @@ class UpdateAccountEvent implements ObserverInterface
      */
     public function execute(\Magento\Framework\Event\Observer $observer)
     {
-        $this->logger->info('In UpdateAccountEvent');
+        $this->logger->info('>>>> In UpdateAccountEvent <<<<<');
 
-		
-		//$UPDATE_ACCOUNT_EVENT = '$update_account'; 
+       // $post = $this->_request->getPost();
+        //$newpassword = "";
+        //if(isset($post["password_confirmation"])) {
+          //  $newpassword = $post["password_confirmation"];
+        //}
 		$helper= $this->dataHelper;
 		$constants= $this->constantsHelper;
         $event = $constants::UPDATE_ACCOUNT_EVENT_NAME;
-		
-		$objectManager = \Magento\Framework\App\ObjectManager::getInstance();
+        $objectManager = \Magento\Framework\App\ObjectManager::getInstance();
+        //contact info
+        //$customer = $observer->getCustomerCandidateDataObject();
+		//$customer = $observer->getCustomerDataObject();
+        //$customer = $observer->getEvent()->getCustomer();
+        $customerAddress = $observer->getCustomerAddress();
+        $customer = $customerAddress->getCustomer();
 
-		$customer = $observer->getCustomerDataObject();
 	    $customer_id = $customer->getId();
 		$customer_email=$customer->getEmail();
 		$first_name= $customer->getFirstname();
 		$last_name= $customer->getLastname();
 		$customer_name = $first_name." ".$last_name;
-		
 		$session = $this->customerSession->getMyValue();
-		$referrer_user_id = $customer_id."Test";
+		$referrer_user_id = $customer_id;
 		$customer_agent = $_SERVER ['HTTP_USER_AGENT'];
-		
-		//Billing Address variables
-		
-		$billingID = $customer->getDefaultBilling();
-		$billingAddress = $objectManager->create('Magento\Customer\Model\Address')->load($billingID);
-		$billingCompany = $billingAddress->getCompany();
-		$billingTelephone = $billingAddress->getTelephone();
-		$billingZipcode = $billingAddress->getPostcode();
-		$billingCity = $billingAddress->getCity();
-		$billingRegion = $billingAddress->getRegion();
-		$billingStreet = $billingAddress->getStreet();
-		$billingAddress1 = $billingStreet[0];
-		$billingAddress2 = "";
-		if(isset($billingStreet[1])){
-			$billingAddress2 = $billingStreet[1];
-		}	
-		
-		//Shipping Address variables
-		$shippingId = $customer->getDefaultShipping();
-		$shippingAddress = $objectManager->create('Magento\Customer\Model\Address')->load($shippingId);
-		$shippingCompany = $shippingAddress->getCompany();
-		$shippingTelephone = $shippingAddress->getTelephone();
-		$shippingZipcode = $shippingAddress->getPostcode();
-		$shippingCity = $shippingAddress->getCity();
-		$shippingRegion = $shippingAddress->getRegion();
-		$shippingStreet = $shippingAddress->getStreet();
-		$shippingAddress1 = $shippingStreet[0];
-		$shippingAddress2 = "";
-		if(isset($shippingStreet[1])){
-			$shippingAddress2 = $shippingStreet[1];
-		}
-	
+
+        //Billing Address variables
+        $billingID = $customer->getDefaultBilling();
+        $billingAddress = $objectManager->create('Magento\Customer\Model\Address')->load($billingID);
+        $billingCompany = $billingAddress->getCompany();
+        $billingTelephone = $billingAddress->getTelephone();
+        $billingZipcode = $billingAddress->getPostcode();
+        $billingCity = $billingAddress->getCity();
+        $billingRegion = $billingAddress->getRegion();
+        $billingStreet = $billingAddress->getStreet();
+        $billingAddress1 = $billingStreet[0];
+        $billingAddress2 = "";
+        if(isset($billingStreet[1])){
+            $billingAddress2 = $billingStreet[1];
+        }
+
+        //Shipping Address variables
+        $shippingId = $customer->getDefaultShipping();
+        $shippingAddress = $objectManager->create('Magento\Customer\Model\Address')->load($shippingId);
+        $shippingCompany = $shippingAddress->getCompany();
+        $shippingTelephone = $shippingAddress->getTelephone();
+        $shippingZipcode = $shippingAddress->getPostcode();
+        $shippingCity = $shippingAddress->getCity();
+        $shippingRegion = $shippingAddress->getRegion();
+        $shippingStreet = $shippingAddress->getStreet();
+        $shippingAddress1 = $shippingStreet[0];
+        $shippingAddress2 = "";
+        if(isset($shippingStreet[1])){
+            $shippingAddress2 = $shippingStreet[1];
+        }
+
+
 		
         // If customer data is empty then doesn't need to process
         if (!$customer) {
@@ -135,26 +148,28 @@ class UpdateAccountEvent implements ObserverInterface
 		  '$name'             => $customer_name,
 		  '$phone'            => $billingTelephone,
 		  '$referrer_user_id' => $referrer_user_id,
-		 
-		  '$billing_address'  => array(
-			  '$name'         => $customer_name,
-			  '$phone'        => $billingTelephone,
-			  '$address_1'    => $billingAddress1,
-			  '$address_2'    => $billingAddress2,
-			  '$city'         => $billingCity,
-			  '$region'       => $billingRegion,
-			  '$country'      => 'US',
-			  '$zipcode'      => $billingZipcode
-		  ),
+
+
+            '$billing_address'  => array(
+                '$name'         => $customer_name,
+                '$phone'        => $shippingTelephone,
+                '$address_1'    => $shippingAddress1,
+                '$address_2'    => $shippingAddress2,
+                '$city'         => $shippingCity,
+                '$region'       => $shippingRegion,
+                '$country'      => 'US',
+                '$zipcode'      => $shippingZipcode
+            ),
+
 		  '$shipping_address' => array(
-			  '$name'         => $customer_name,
-			  '$phone'        => $shippingTelephone,
-			  '$address_1'    => $shippingAddress1,
-			  '$address_2'    => $shippingAddress2,
-			  '$city'         => $shippingCity,
-			  '$region'       => $shippingRegion,
-			  '$country'      => 'US',
-			  '$zipcode'      => $shippingZipcode
+              '$name'         => $customer_name,
+              '$phone'        => $shippingTelephone,
+              '$address_1'    => $shippingAddress1,
+              '$address_2'    => $shippingAddress2,
+              '$city'         => $shippingCity,
+              '$region'       => $shippingRegion,
+              '$country'      => 'US',
+              '$zipcode'      => $shippingZipcode
 		  ),
 		  
 		  '$browser'    => array(
@@ -163,8 +178,6 @@ class UpdateAccountEvent implements ObserverInterface
 		  
 		);
 
-        // TODO: add detail
-        $this->logger->info('In UpdateAccountEvent; TODO');
     }
 	
 }

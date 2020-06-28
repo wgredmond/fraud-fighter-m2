@@ -1,11 +1,11 @@
 <?php
 /**
- * William G Redmond Inc.
+ * William G Redmond, Inc.
 
  *
  * @category    WGRedmond
  * @package     WGRedmond
- * @copyright   Copyright (c) William G Redmond, Inc.. All rights reserved. (https://wgredmond.com/)
+ * @copyright   Copyright (c) William G Redmond, Inc. All rights reserved. (https://wgredmond.com/)
  */
 
 namespace WGRedmond\FraudFighter\Observer\Events;
@@ -15,6 +15,10 @@ use Magento\Store\Model\StoreManagerInterface;
 use Psr\Log\LoggerInterface;
 use \WGRedmond\FraudFighter\Helper\Data;
 use \WGRedmond\FraudFighter\Helper\FraudFighterConstants;
+use  \Magento\Framework\Encryption\EncryptorInterface;
+use \Magento\Framework\ObjectManagerInterface;
+use \Magento\Framework\App\RequestInterface;
+
 
 class UpdateAccountAddress implements ObserverInterface
 {
@@ -52,14 +56,20 @@ class UpdateAccountAddress implements ObserverInterface
      * @var FraudFighterConstants Helper
      */
     protected $constantsHelper;
-	
+
+    protected $encryptor;
+    protected  $objectM;
+    protected  $_request;
     public function __construct(
       
         StoreManagerInterface $storeManager,
         LoggerInterface $logger,
 		\Magento\Customer\Model\Session $customerSession,
 		Data $dataHelper,
-		FraudFighterConstants $constantsHelper
+		FraudFighterConstants $constantsHelper,
+        EncryptorInterface $encryptor,
+        ObjectManagerInterface $objectM,
+        RequestInterface $request
     ) {
     
         $this->storeManager = $storeManager;
@@ -67,6 +77,9 @@ class UpdateAccountAddress implements ObserverInterface
 		$this->customerSession = $customerSession;
 		$this->dataHelper = $dataHelper;
 		$this->constantsHelper = $constantsHelper;
+        $this->encryptor = $encryptor;
+        $this->objectM = $objectM;
+        $this->_request = $request;
     }
 
     /**
@@ -75,9 +88,9 @@ class UpdateAccountAddress implements ObserverInterface
      */
     public function execute(\Magento\Framework\Event\Observer $observer)
     {
-        $this->logger->info('In UpdateAccountAddress');
+        $this->logger->info('>>>> In UpdateAccountAddress <<<<<');
 
-		$helper= $this->dataHelper;
+        $helper= $this->dataHelper;
 		$constants= $this->constantsHelper;
         $event = $constants::UPDATE_ACCOUNT_EVENT_NAME;
 		
@@ -87,7 +100,34 @@ class UpdateAccountAddress implements ObserverInterface
 		$customerAddress = $observer->getCustomerAddress();
         $customer = $customerAddress->getCustomer();
 		
-		
+		//Password hash
+
+        $post = $this->_request->getPost();
+        
+        $passwordChanged = false;
+
+        if(isset($post["password_confirmation"])){
+
+            $passwordNew = $post["password_confirmation"];
+            $currentPasswordHash = $this->getCurrentPasswordHash($customer->getEntityId());
+
+            try{
+                $newPasswordHash = $this->encryptor->encrypt($passwordNew);
+                if($currentPasswordHash == $newPasswordHash){
+                    // password is same
+                    $passwordChanged = false;
+
+                }
+                else if ($currentPasswordHash != $newPasswordHash){
+                    $passwordChanged = true;
+                }
+            }catch(\Exception $e){
+                echo 'Error::'.$e->getMessage();
+            }
+
+        }
+
+
 		
 		//Customer main info
 		$customer_id = $customer->getId();
@@ -144,10 +184,10 @@ class UpdateAccountAddress implements ObserverInterface
 		  '$ip' => $helper->getRemoteIp(),
 
 		  // Supported Fields
-		  '$changed_password' => False,
+		  '$changed_password' => $passwordChanged,
 			'$session_id'       => $session,
 		  '$user_email'       => $customer_email,
-		  '$name'             => $customer_email,
+		  '$name'             => $customer_name,
 		  '$phone'            => $billingTelephone,
 		  '$referrer_user_id' => $referrer_user_id,
 		 
@@ -179,8 +219,16 @@ class UpdateAccountAddress implements ObserverInterface
 		  ) 
 		);
 
-        // TODO: add detail
-        $this->logger->info('In UpdateAccountAddress; TODO');
+        // TODO: add logging
+
+    }
+
+    private function getCurrentPasswordHash($customerId){
+        $resource = $this->objectM->get('Magento\Framework\App\ResourceConnection');
+        $connection = $resource->getConnection();
+        $sql = "Select password_hash from customer_entity WHERE entity_id = ".$customerId;
+        $hash = $connection->fetchOne($sql);
+        return $hash;
     }
 	
 }

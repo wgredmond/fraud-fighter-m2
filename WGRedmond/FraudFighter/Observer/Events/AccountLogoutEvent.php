@@ -1,17 +1,18 @@
 <?php
 /**
- * William G Redmond Inc.
+ * William G Redmond, Inc.
+
  *
  * @category    WGRedmond
  * @package     WGRedmond
- * @copyright   Copyright (c) William G Redmond, Inc.. All rights reserved. (https://wgredmond.com/)
+ * @copyright   Copyright (c) William G Redmond, Inc. All rights reserved. (https://wgredmond.com/)
  */
 
 namespace WGRedmond\FraudFighter\Observer\Events;
 
 use Magento\Framework\Event\ObserverInterface;
 use Magento\Store\Model\StoreManagerInterface;
-use Psr\Log\LoggerInterface;
+use \WGRedmond\FraudFighter\Logger\Logger;
 use \WGRedmond\FraudFighter\Helper\Data;
 use \WGRedmond\FraudFighter\Helper\FraudFighterConstants;
 
@@ -19,31 +20,32 @@ class AccountLogoutEvent implements ObserverInterface
 {
 
     /**
-     * @var LoggerInterface
+     * @var Logger
      */
     protected $logger;
+	
+	protected $customerFactory;
 
-    /**
+	/**
      * @var Data Helper
      */
     protected $dataHelper;
-
-    /**
+	
+	/**
      * @var FraudFighterConstants Helper
      */
     protected $constantsHelper;
-
+	
 
     public function __construct(
-        LoggerInterface $logger,
-        Data $dataHelper,
-        FraudFighterConstants $constantsHelper
-    )
-    {
+        Logger $logger,
+		Data $dataHelper,
+		FraudFighterConstants $constantsHelper
+    ) {
 
         $this->logger = $logger;
-        $this->dataHelper = $dataHelper;
-        $this->constantsHelper = $constantsHelper;
+		$this->dataHelper = $dataHelper;
+		$this->constantsHelper = $constantsHelper;
     }
 
     /**
@@ -52,26 +54,36 @@ class AccountLogoutEvent implements ObserverInterface
      */
     public function execute(\Magento\Framework\Event\Observer $observer)
     {
-        $this->logger->info('In AccountLogoutEvent');
-
-        $helper = $this->dataHelper;
-        $constants = $this->constantsHelper;
+	    $this->logger->info('>>>> In AccountLogoutEvent <<<<<');
+		
+		$helper= $this->dataHelper;
+		$constants= $this->constantsHelper;
         $event = $constants::LOGOUT_EVENT_NAME;
+   
+		$objectManager = \Magento\Framework\App\ObjectManager::getInstance();
 
-        $objectManager = \Magento\Framework\App\ObjectManager::getInstance();
-
-        $customer = $observer->getEvent()->getCustomer();
-        $customer_id = $customer->getId();
-        $customer_email = $customer->getEmail();
-        $customer_agent = $_SERVER ['HTTP_USER_AGENT'];
+		$customer = $observer->getEvent()->getCustomer();
+	    $customer_id = $customer->getId();
+		$customer_email=$customer->getEmail();
+		$customer_agent = $_SERVER ['HTTP_USER_AGENT'];
 
         // If customer data is empty then doesn't need to process
         if (!$customer) {
             return $this;
         }
 
-        // TODO: add detail
-        $this->logger->info('In AccountLogoutEvent; TODO');
-    }
+		// $logout event
+		$properties = array(
+		  // Required Fields
+		  '$user_id'    => $customer_id,
 
+		  '$browser'    => array(
+			'$user_agent' =>  $customer_agent
+		  )
+		  
+		);
+
+        // TODO: add loggings
+    }
+	
 }

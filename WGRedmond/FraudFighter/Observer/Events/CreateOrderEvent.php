@@ -1,159 +1,263 @@
 <?php
-/**
- * William G Redmond Inc.
-
- *
- * @category    WGRedmond
- * @package     WGRedmond
- * @copyright   Copyright (c) William G Redmond, Inc.. All rights reserved. (https://wgredmond.com/)
- */
 
 namespace WGRedmond\FraudFighter\Observer\Events;
 
+use Magento\Customer\Model\Session;
+use Magento\Framework\Event\Observer;
 use Magento\Framework\Event\ObserverInterface;
-use Magento\Store\Model\StoreManagerInterface;
-use Psr\Log\LoggerInterface;
+use Magento\Sales\Model\Order;
+use \WGRedmond\FraudFighter\Logger\Logger;
 use \WGRedmond\FraudFighter\Helper\Data;
+use \WGRedmond\FraudFighter\Helper\FraudFighterConstants;
+use \WGRedmond\FraudFighter\Helper\ConfigFunctions;
+use \WGRedmond\FraudFighter\Interfaces\EventsInterface;
 
-class CreateOrderEvent implements ObserverInterface
+class CreateOrderEvent implements ObserverInterface, EventsInterface
 {
-
-    /**
-     * @var StoreManagerInterface
-     */
-    protected $storeManager;
-
     /**
      * @var LoggerInterface
      */
     protected $logger;
-	/**
-     * @var CustomerFactory
-     */
-	protected $customerFactory;
-	/**
-     * @var AddressFactory
-     */
-	protected $addressFactory;
+
 	/**
      * @var CustomerSession
      */
 	protected $customerSession;
+
 	/**
      * @var Data Helper
      */
     protected $dataHelper;
 
     /**
-     * @param TransportBuilder $transportBuilder
-     * @param StoreManagerInterface $storeManager
-     * @param LoggerInterface $logger
+     * @var FraudFighterConstants Helper
+     */
+    protected $constantsHelper;
+
+    /**
+     * @var ConfigFunctions Helper
+     */
+    protected $configFunctions;
+
+
+    /**
+     * @param Logger $logger
+     * @param Session $customerSession
+     * @param Data $dataHelper
+     * @param FraudFighterConstants $constantsHelper
+     * @param ConfigFunctions $configFunctions
      */
     public function __construct(
-       
-        StoreManagerInterface $storeManager,
-        LoggerInterface $logger,
-		\Magento\Customer\Model\Session $customerSession,
-		Data $dataHelper
+        Logger $logger,
+        Session $customerSession,
+        Data $dataHelper,
+        FraudFighterConstants $constantsHelper,
+        ConfigFunctions $configFunctions
     ) {
-      
-        $this->storeManager = $storeManager;
         $this->logger = $logger;
-		$this->customerSession = $customerSession;
-		$this->dataHelper = $dataHelper;
+        $this->customerSession = $customerSession;
+        $this->dataHelper = $dataHelper;
+        $this->constantsHelper = $constantsHelper;
+        $this->configFunctions = $configFunctions;
     }
 
     /**
-     * @param \Magento\Framework\Event\Observer $observer
+     * @param Observer $observer
      * @return $this
      */
-    public function execute(\Magento\Framework\Event\Observer $observer)
+    public function execute(Observer $observer)
     {
-        $this->logger->info('In CreateOrderEvent');
+        $this->logger->info('Start CreateOrderEvent');
 
-		$CREATE_ORDER_EVENT = '$create_order';
 		$helper= $this->dataHelper;
+        $constants= $this->constantsHelper;
 
-		$objectManager = \Magento\Framework\App\ObjectManager::getInstance();
-	    $customer = $observer->getEvent()->getCustomer();
-
+        // get order
 	    $order = $observer->getEvent()->getOrder();
-	    $this->logger->info('In CreateOrderEvent, Order id = '.$order->getId());
-		
-		//$orderId = $this->getRequest()->getParam('order_id');
-		//$order =  $this->$objectManager->create('Magento\Sales\Model\Order')->load($orderId);
-		
-		/*get customer details*/
-		//$custLastName= $orders->getCustomerLastname();
-		//$custFirsrName= $orders->getCustomerFirstname();
-		//$ipaddress=$order->getRemoteIp();
-		//$customer_email=$order->getCustomerEmail();
-		//$customerid=$order->getCustomerId();
-		$customer_agent = $_SERVER ['HTTP_USER_AGENT'];
 
-		/* get Billing details */  
-		$billingaddress=$order->getBillingAddress();
-		$billingcity=$billingaddress->getCity();      
-		$billingstreet=$billingaddress->getStreet();
-		$billingpostcode=$billingaddress->getPostcode();
-		$billingtelephone=$billingaddress->getTelephone();
-		$billingstate_code=$billingaddress->getRegionCode();
-
-		/* get shipping details */
-
-		$shippingaddress=$order->getShippingAddress();        
-		$shippingcity=$shippingaddress->getCity();
-		$shippingstreet=$shippingaddress->getStreet();
-		$shippingpostcode=$shippingaddress->getPostcode();      
-		$shippingtelephone=$shippingaddress->getTelephone();
-		$shippingstate_code=$shippingaddress->getRegionCode();
-	
         // If order data is empty then doesn't need to process
-        if (!$order) {
+        if (empty($order)) {
+            $this->logger->info('There is an error in CreateOrderEvent');
             return $this;
         }
 
-		// Sample $create_account event
-		$properties = array(
+        // basic properties
+        $properties = $this->addBasicProperties($order);
+
+        // custom properties
+        $customProperties = $this->addCustomProperties($order);
+        $properties = array_merge($properties, $customProperties);
+
+        // add options
+        $options = $this->addOptions();
+
+		$this->logger->info('End CreateOrderEvent');
+    }
+
+
+    /**
+     * @param  Order $order
+     */
+    public function addBasicProperties($order)
+    {
+        $this->logger->info('>>>> In CreateOrderEvent <<<<<');
+
+        //Order main info
+	    $order_id           = $order->getIncrementId();
+	    $order_amount       = $this->dataHelper->convertAmountToMicros($order->getGrandTotal());
+	    $order_currency     = $order->getOrderCurrencyCode();
+
+        //Customer main info
+        $customer_id        = $order->getCustomerId();
+        $customer_email     = $order->getCustomerEmail();
+        $session            = $this->customerSession->getMyValue();
+        $customer_agent     = $_SERVER ['HTTP_USER_AGENT'];
+
+		//Billing Address details
+		$billingAddress     = $order->getBillingAddress();
+		$billingFirstName   = $billingAddress->getFirstname();
+		$billingLastName    = $billingAddress->getLastName();
+		$billingName        = $billingFirstName." ".$billingLastName;
+        $billingTelephone   = $billingAddress->getTelephone();
+        $billingStreet      = $billingAddress->getStreet();
+        $billingAddress1    = $billingStreet[0];
+        $billingAddress2    = "";
+        if(isset($billingStreet[1])){
+            $billingAddress2 = $billingStreet[1];
+        }
+		$billingCity        = $billingAddress->getCity();
+		$billingRegion      = $billingAddress->getRegion();
+		$billingCountry     = $billingAddress->getCountryId();
+        $billingZipCode     = $billingAddress->getPostcode();
+
+		//Shipping Address details
+		$shippingAddress    = $order->getShippingAddress();
+        $shippingFirstName  = $shippingAddress->getFirstname();
+        $shippingLastName   = $shippingAddress->getLastName();
+        $shippingName       = $shippingFirstName." ".$shippingLastName;
+        $shippingTelephone  = $shippingAddress->getTelephone();
+        $shippingStreet     = $shippingAddress->getStreet();
+        $shippingAddress1   = $shippingStreet[0];
+        $shippingAddress2   = "";
+        if(isset($shippingStreet[1])){
+            $shippingAddress2 = $shippingStreet[1];
+        }
+        $shippingCity       = $shippingAddress->getCity();
+        $shippingRegion     = $shippingAddress->getRegion();
+        $shippingCountry    = $shippingAddress->getCountryId();
+        $shippingZipCode    = $shippingAddress->getPostcode();
+
+        //Payment gateway from Admin panel
+        $paymentType        = $this->configFunctions->getPaymentGateway();
+        $payment            = $order->getPayment();
+        $cardLast4          = $payment->getCcLast4();
+
+        //Order items details
+        $orderItems         = $order->getAllVisibleItems();
+        $items = [];
+        foreach ($orderItems as $item){
+
+            //Create array
+            $tempItems = array();
+            $tempItems = array(
+                '$sku'            => $item->getProductId(),
+                '$product_title'  => $item->getName(),
+                '$price'          => $this->dataHelper->convertAmountToMicros($item->getPrice()),
+                '$quantity'       => intval($item->getQtyOrdered()),
+                '$currency_code'  => $order_currency
+            );
+
+            array_push($items, $tempItems);
+        }
+
+        if (!empty($payment->getAmountAuthorized())) {
+            $paymentMethods = array(
+                array(
+                    '$payment_type'    => '$credit_card',
+                    '$payment_gateway' => $paymentType
+                )
+            );
+        } else {
+            // TODO: add proper logic all payment types
+            $paymentMethods = array(
+                array(
+                    '$payment_type'    => '$cash'
+                )
+            );
+        }
+
+		// set up the create order event data
+		$basicProperties = array(
+
 		  // Required Fields
-		  '$user_id'    => $customer_id,
-          '$ip' => $helper->getRemoteIp(),
+		  '$user_id'          => $customer_id,
+          '$ip'               => $this->dataHelper->getRemoteIp(),
 
 		  // Supported Fields
-		  '$session_id'       => $session,
+		  '$order_id'         => $order_id,
 		  '$user_email'       => $customer_email,
-		  '$name'             => $customer_email,
-		  '$phone'            => $billingTelephone,
-		  '$referrer_user_id' => $referrer_user_id,
-		 
+		  '$amount'           => $order_amount,
+          '$currency_code'    => $order_currency,
 		  '$billing_address'  => array(
-			  '$name'         => $customer_name,
+			  '$name'         => $billingName,
 			  '$phone'        => $billingTelephone,
 			  '$address_1'    => $billingAddress1,
 			  '$address_2'    => $billingAddress2,
 			  '$city'         => $billingCity,
 			  '$region'       => $billingRegion,
-			  '$country'      => 'US',
-			  '$zipcode'      => $billingZipcode
+			  '$country'      => $billingCountry,
+			  '$zipcode'      => $billingZipCode
 		  ),
 		  '$shipping_address' => array(
-			  '$name'         => $customer_name,
+			  '$name'         => $shippingName,
 			  '$phone'        => $shippingTelephone,
 			  '$address_1'    => $shippingAddress1,
 			  '$address_2'    => $shippingAddress2,
 			  '$city'         => $shippingCity,
 			  '$region'       => $shippingRegion,
-			  '$country'      => 'US',
-			  '$zipcode'      => $shippingZipcode
+			  '$country'      => $shippingCountry,
+			  '$zipcode'      => $shippingZipCode
 		  ),
-		  
-		  '$browser'    => array(
-			'$user_agent' =>  $customer_agent
-		  ) 
+		  '$payment_methods'  => $paymentMethods,
+          '$items'            => $items,
+		  '$browser'          => array(
+		      '$user_agent'     =>  $customer_agent
+		  )
 		);
 
-        // TODO: add detail
-        $this->logger->info('In CreateOrderEvent; TODO');
+		return $basicProperties;
     }
-	
+
+
+    /**
+     * @param  Order $order
+     */
+    public function addCustomProperties($order)
+    {
+        // Override to add custom properties
+        $customProperties = array();
+
+        // example
+        //$customProperties = array(
+		//  '$session_id'       => 'session-1234-5678',
+		//  '$user_email'       => 'BOBBY@EXAMPLE.COM'
+        //);
+
+        return $customProperties;
+    }
+
+
+    /**
+     *
+     */
+    public function addOptions()
+    {
+        // Override to add options
+        $options = array(
+            'return_workflow_status' => True,
+            'abuse_types' =>  array('payment_abuse')
+        );
+
+		return $options;
+    }
 }
