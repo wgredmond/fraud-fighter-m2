@@ -1,6 +1,8 @@
-<config xsi:noNamespaceSchemaLocation="../../../../../../lib/internal/Magento/Framework/Event/etc/events.xsd">
+<?xml version="1.0"?>
 
-    <event name="sales_order_place_before">
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="urn:magento:framework:Event/etc/events.xsd">
+
+<event name="sales_order_place_before">
         <observer name="wgredmond_fraudfighter_create_order"
                   instance="WGRedmond\FraudFighter\Observer\Events\CreateOrderEvent"/>
     </event>

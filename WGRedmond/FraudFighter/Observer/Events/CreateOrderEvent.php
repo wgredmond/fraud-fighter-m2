@@ -100,18 +100,20 @@ class CreateOrderEvent implements ObserverInterface, EventsInterface
      */
     public function addBasicProperties($order)
     {
-        $this->logger->info('>>>> In CreateOrderEvent <<<<<');
+        $this->logger->info('>>>> In addBasicProperties <<<<<');
 
         //Order main info
 	    $order_id           = $order->getIncrementId();
 	    $order_amount       = $this->dataHelper->convertAmountToMicros($order->getGrandTotal());
 	    $order_currency     = $order->getOrderCurrencyCode();
+        $this->logger->info('>>>> In addBasicProperties added order main info <<<<<');
 
         //Customer main info
         $customer_id        = $order->getCustomerId();
         $customer_email     = $order->getCustomerEmail();
         $session            = $this->customerSession->getMyValue();
         $customer_agent     = $_SERVER ['HTTP_USER_AGENT'];
+        $this->logger->info('>>>> In addBasicProperties added customer main info <<<<<');
 
 		//Billing Address details
 		$billingAddress     = $order->getBillingAddress();
@@ -129,6 +131,7 @@ class CreateOrderEvent implements ObserverInterface, EventsInterface
 		$billingRegion      = $billingAddress->getRegion();
 		$billingCountry     = $billingAddress->getCountryId();
         $billingZipCode     = $billingAddress->getPostcode();
+        $this->logger->info('>>>> In addBasicProperties added billing info <<<<<');
 
 		//Shipping Address details
 		$shippingAddress    = $order->getShippingAddress();
@@ -146,11 +149,13 @@ class CreateOrderEvent implements ObserverInterface, EventsInterface
         $shippingRegion     = $shippingAddress->getRegion();
         $shippingCountry    = $shippingAddress->getCountryId();
         $shippingZipCode    = $shippingAddress->getPostcode();
+        $this->logger->info('>>>> In addBasicProperties added shipping info <<<<<');
 
         //Payment gateway from Admin panel
-        $paymentType        = $this->configFunctions->getPaymentGateway();
+        //$paymentType        = $this->configFunctions->getPaymentGateway();
         $payment            = $order->getPayment();
         $cardLast4          = $payment->getCcLast4();
+        $this->logger->info('>>>> In addBasicProperties added payment info <<<<<');
 
         //Order items details
         $orderItems         = $order->getAllVisibleItems();
@@ -169,6 +174,7 @@ class CreateOrderEvent implements ObserverInterface, EventsInterface
 
             array_push($items, $tempItems);
         }
+        $this->logger->info('>>>> In addBasicProperties added order items info <<<<<');
 
         if (!empty($payment->getAmountAuthorized())) {
             $paymentMethods = array(

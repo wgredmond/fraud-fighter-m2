@@ -76,10 +76,10 @@ class TransactionEvent implements ObserverInterface
         $order = $payment->getOrder();
 
         if (!empty($payment->getAmountAuthorized())) {
-            $paymentGateway      = $this->configFunctions->getPaymentGateway();
+            //$paymentGateway      = $this->configFunctions->getPaymentGateway();
             $paymentMethod = array(
                 '$payment_type'    => '$credit_card',
-                '$payment_gateway' => $paymentGateway,
+                //'$payment_gateway' => $paymentGateway,
                 '$card_last4'      => $payment->getCcLast4()
             );
             $transactionType = '$authorize';
@@ -158,5 +158,5 @@ class TransactionEvent implements ObserverInterface
 
         $this->logger->info('>>>>> End TransactionEvent <<<<<');
     }
-	
+
 }
