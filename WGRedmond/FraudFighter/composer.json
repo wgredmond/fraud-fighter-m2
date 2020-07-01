@@ -1,6 +1,6 @@
 {
     "name": "wgredmond/module-fraud-fighter",
-    "description": "A frad logging andd detection implementation",
+    "description": "A fraud logging andd detection implementation",
     "type": "magento2-module",
     "version": "1.0.0",
     "require": {

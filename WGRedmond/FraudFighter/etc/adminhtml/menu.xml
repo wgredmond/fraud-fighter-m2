@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Backend:etc/menu.xsd">
     <menu>
-        <add id="WGRedmond_FraudFighter::wgredmond" title="W G Redmond" translate="title" module="WGRedmond_FraudFighter" parent="Magento_Backend::content" sortOrder="50" dependsOnModule="WGRedmond_FraudFighter" resource="WGRedmond_FraudFighter::wgredmond"/>
-        <add id="WGRedmond_FraudFighter::wgredmond_suspected_fraud" title="Suspected Fraud" translate="title" module="WGRedmond_FraudFighter" parent="WGRedmond_FraudFighter::wgredmond" sortOrder="10" dependsOnModule="WGRedmond_FraudFighter" action="xxx/yyy" resource="WGRedmond_FraudFighter::wgredmond"/>
+        <add id="WGRedmond_FraudFighter::suspectedfraud" title="Suspected Fraud" translate="title" module="WGRedmond_FraudFighter" parent="Magento_Customer::customer" sortOrder="50" dependsOnModule="WGRedmond_FraudFighter" resource="WGRedmond_FraudFighter::suspectedfraud"/>
+        <add id="WGRedmond_FraudFighter::suspectedfraud_dashboard" title="Dashboard" translate="title" module="WGRedmond_FraudFighter" parent="WGRedmond_FraudFighter::suspectedfraud" sortOrder="10" dependsOnModule="WGRedmond_FraudFighter" action="fraudfighter/dashboard" resource="WGRedmond_FraudFighter::suspectedfraud"/>
     </menu>
 </config>
